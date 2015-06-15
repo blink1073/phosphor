@@ -21,8 +21,8 @@ def main(argv):
          {'path': '../../dist'}),
         (r"/build/(.*)", tornado.web.StaticFileHandler,
          {'path': 'build'}),
-        (r"/term/(.*)", tornado.web.StaticFileHandler,
-         {'path': '../../node_modules/term.js/src/'}),
+        (r"/node_modules/(.*)", tornado.web.StaticFileHandler,
+         {'path': '../../node_modules'}),
         (r"/", TerminalPageHandler),
     ]
     app = tornado.web.Application(handlers, static_path='build',
