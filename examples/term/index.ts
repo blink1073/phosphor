@@ -62,6 +62,7 @@ class TermWidget extends Widget {
 
   dispose(): void {
     this._ws = null;
+    this._term.destroy();
     this._term = null;
     super.dispose();
   }
