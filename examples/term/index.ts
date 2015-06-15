@@ -32,34 +32,31 @@ class TermWidget extends Widget {
       useStyle: true
     });
 
-    var ws = this._ws;
-    var term = this._term;
-
     this._term.open(this.node);
 
-    this._ws.onopen = function(event: MessageEvent) {
-      ws.send(JSON.stringify(["set_size", size.rows, size.cols,
-        window.innerHeight, window.innerWidth]));
+    this._term.on('data', (data: string) => {
+      this._ws.send(JSON.stringify(['stdin', data]));
+    });
 
-      term.on('data', function(data: string) {
-        ws.send(JSON.stringify(['stdin', data]));
-      });
+    this._term.on('title', function(title: string) {
+      document.title = title;
+    });
 
-      term.on('title', function(title: string) {
-        document.title = title;
-      });
+    this._ws.onopen = (event: MessageEvent) => {
+      this._ws.send(JSON.stringify(["set_size", this._term.rows,
+        this._term.cols, window.innerHeight, window.innerWidth]));
+    };
 
-      ws.onmessage = function(event: MessageEvent) {
-        var json_msg = JSON.parse(event.data);
-        switch (json_msg[0]) {
-          case "stdout":
-            term.write(json_msg[1]);
-            break;
-          case "disconnect":
-            term.write("\r\n\r\n[Finished... Term Session]\r\n");
-            break;
-        }
-      };
+    this._ws.onmessage = (event: MessageEvent) => {
+      var json_msg = JSON.parse(event.data);
+      switch (json_msg[0]) {
+        case "stdout":
+          this._term.write(json_msg[1]);
+          break;
+        case "disconnect":
+          this._term.write("\r\n\r\n[Finished... Term Session]\r\n");
+          break;
+      }
     };
   }
 
