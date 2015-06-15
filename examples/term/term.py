@@ -12,7 +12,11 @@ class TerminalPageHandler(tornado.web.RequestHandler):
 
 
 def main(argv):
-    term_manager = SingleTermManager(shell_command=['bash'])
+    if len(sys.argv) > 1:
+        cmd = sys.argv[1]
+    else:
+        cmd = 'bash'
+    term_manager = SingleTermManager(shell_command=[cmd])
 
     handlers = [
         (r"/websocket", TermSocket,
@@ -41,4 +45,5 @@ def main(argv):
         loop.close()
 
 if __name__ == '__main__':
-    main([])
+    import sys
+    main(sys.argv)
