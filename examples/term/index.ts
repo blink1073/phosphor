@@ -38,15 +38,6 @@ class TermWidget extends Widget {
       this._ws.send(JSON.stringify(['stdin', data]));
     });
 
-    this._term.on('title', function(title: string) {
-      document.title = title;
-    });
-
-    this._ws.onopen = (event: MessageEvent) => {
-      this._ws.send(JSON.stringify(["set_size", this._term.rows,
-        this._term.cols, window.innerHeight, window.innerWidth]));
-    };
-
     this._ws.onmessage = (event: MessageEvent) => {
       var json_msg = JSON.parse(event.data);
       switch (json_msg[0]) {
