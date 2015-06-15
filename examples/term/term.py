@@ -5,6 +5,7 @@ from terminado import TermSocket, SingleTermManager
 
 
 class TerminalPageHandler(tornado.web.RequestHandler):
+
     def get(self):
         return self.render("index.html", static=self.static_url,
                            ws_url_path="/websocket")
@@ -12,13 +13,20 @@ class TerminalPageHandler(tornado.web.RequestHandler):
 
 def main(argv):
     term_manager = SingleTermManager(shell_command=['bash'])
+
     handlers = [
-                (r"/websocket", TermSocket,
-                     {'term_manager': term_manager}),
-                (r"/", TerminalPageHandler),
-               ]
+        (r"/websocket", TermSocket,
+         {'term_manager': term_manager}),
+        (r"/dist/(.*)", tornado.web.StaticFileHandler,
+         {'path': '../../dist'}),
+        (r"/build/(.*)", tornado.web.StaticFileHandler,
+         {'path': 'build'}),
+        (r"/term/(.*)", tornado.web.StaticFileHandler,
+         {'path': '../../node_modules/term.js/src/'}),
+        (r"/", TerminalPageHandler),
+    ]
     app = tornado.web.Application(handlers, static_path='build',
-                      template_path='.')
+                                  template_path='.')
 
     app.listen(8765, 'localhost')
     url = "http://localhost:8765/"
