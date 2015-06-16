@@ -16,7 +16,12 @@
     "gulp-typescript": "2.4.2",
     "gulp-uglify": "^1.2.0",
     "mocha": "^2.2.5",
-    "nib": "^1.1.0"
+    "nib": "^1.1.0",
+    "jmp": "0.0.3",
+    "katex": "^0.2.0",
+    "marked": "^0.3.3",
+    "minimist": "^1.1.1",
+    "zmq": "^2.11.0",
   },
   "scripts": {},
   "repository": {
