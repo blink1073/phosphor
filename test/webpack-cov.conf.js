@@ -14,6 +14,9 @@ module.exports = {
         include: path.resolve('lib/'),
         loader: 'istanbul-instrumenter'
       }
-    ]
+    ],
+    loaders: [
+      { test: /\.css$/, loader: 'style-loader!css-loader' },
+    ],
   }
 }
