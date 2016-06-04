@@ -1,20 +1,15 @@
 /*-----------------------------------------------------------------------------
-| Copyright (c) 2014-2015, PhosphorJS Contributors
+| Copyright (c) 2014-2016, PhosphorJS Contributors
 |
 | Distributed under the terms of the BSD 3-Clause License.
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-'use strict';
-
 import expect = require('expect.js');
 
 import {
   overrideCursor
 } from '../../../lib/dom/cursor';
-
-import './index.css';
-import '../../../styles/base.css';
 
 
 describe('dom/cursor', () => {
