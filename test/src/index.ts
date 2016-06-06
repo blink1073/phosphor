@@ -28,5 +28,7 @@ import './dom/query.spec';
 import './dom/selector.spec';
 import './dom/sizing.spec';
 
+import './ui/commands.spec';
+
 import '../../styles/base.css';
 import '../index.css';
