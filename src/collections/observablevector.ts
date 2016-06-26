@@ -8,8 +8,12 @@
 'use strict';
 
 import {
-  each, toArray
+  each
 } from '../algorithm/iteration';
+
+import {
+  ISequence
+} from '../algorithm/sequence';
 
 import {
   JSONObject
@@ -65,9 +69,9 @@ interface IVectorChangedArgs<T> {
    *   - `'insert'`: The item which was inserted.
    *   - `'remove'`: Always `undefined`.
    *   - `'set'`: The new item at the index.
-   *   - `'swap'`: The new `items[]`.
+   *   - `'swap'`: The new sequence of items.
    */
-  newValue: T | T[];
+  newValue: T | ISequence<T>;
 
   /**
    * The old index associated with the change.
@@ -85,13 +89,13 @@ interface IVectorChangedArgs<T> {
    * The old value associated with the change.
    *
    * The semantics of this value depend upon the change type:
-   *   - `'clear'`: The `items[]` which were removed.
+   *   - `'clear'`: The sequence of items which were removed.
    *   - `'insert'`: Always `undefined`.
    *   - `'remove'`: The item which was removed.
    *   - `'set'`: The old item at the index.
-   *   - `'swap'`: The `items[]` which were removed.
+   *   - `'swap'`: The sequence of items which were removed.
    */
-  oldValue: T | T[];
+  oldValue: T | ISequence<T>;
 }
 
 
@@ -283,7 +287,7 @@ class ObservableVector<T> extends Vector<T> implements IObservableVector<T> {
    * All current iterators are invalidated.
    */
   clear(): void {
-    let oldValue = toArray(this);
+    let oldValue = new Vector(this);
     super.clear();
     this.onChange({
       type: 'clear',
@@ -307,15 +311,14 @@ class ObservableVector<T> extends Vector<T> implements IObservableVector<T> {
    * contents of the other vector involved in the swap.
    */
   swap(other: Vector<T>): void {
-    let oldValue = toArray(this);
+    let oldValue = new Vector(this);
     super.swap(other);
-    let newValue = toArray(this);
     this.onChange({
       type: 'swap',
       oldIndex: 0,
       oldValue,
       newIndex: 0,
-      newValue
+      newValue: this
     });
   }
 
@@ -514,7 +517,7 @@ class ObservableUndoableVector<T extends IJSONable> extends ObservableVector<T> 
       break;
     case 'clear':
     case 'swap':
-      let values = this._createValues(change.oldValue as JSONObject[]);
+      let values = this._createValues(change.oldValue as ISequence<JSONObject>);
       this.swap(values);
       break;
     default:
@@ -543,7 +546,7 @@ class ObservableUndoableVector<T extends IJSONable> extends ObservableVector<T> 
       this.clear();
       break;
     case 'swap':
-      let values = this._createValues(change.newValue as JSONObject[]);
+      let values = this._createValues(change.newValue as ISequence<JSONObject>);
       this.swap(values);
       break;
     default:
@@ -562,7 +565,7 @@ class ObservableUndoableVector<T extends IJSONable> extends ObservableVector<T> 
   /**
    * Create a list of cell models from JSON.
    */
-  private _createValues(bundles: JSONObject[]): Vector<T> {
+  private _createValues(bundles: ISequence<JSONObject>): Vector<T> {
     let values = new Vector<T>();
     each(bundles, bundle => {
       values.pushBack(this._createValue(bundle));
@@ -607,13 +610,13 @@ class ObservableUndoableVector<T extends IJSONable> extends ObservableVector<T> 
    * Copy a swap change as JSON.
    */
   private _copySwap(change: IVectorChangedArgs<T>): IVectorChangedArgs<JSONObject> {
-    let oldValue: JSONObject[] = [];
-    each(change.oldValue as T[], value => {
-      oldValue.push(value.toJSON());
+    let oldValue = new Vector<JSONObject>();
+    each(change.oldValue as ISequence<T>, value => {
+      oldValue.pushBack(value.toJSON());
     });
-    let newValue: JSONObject[] = [];
-    each(change.newValue as T[], value => {
-      newValue.push(value.toJSON());
+    let newValue = new Vector<JSONObject>();
+    each(change.newValue as ISequence<T>, value => {
+      newValue.pushBack(value.toJSON());
     });
     return {
       type: 'swap',
@@ -628,9 +631,9 @@ class ObservableUndoableVector<T extends IJSONable> extends ObservableVector<T> 
    * Copy a clear change as JSON.
    */
   private _copyClear(change: IVectorChangedArgs<T>): IVectorChangedArgs<JSONObject> {
-    let oldValue: JSONObject[] = [];
-    each(change.oldValue as T[], value => {
-      oldValue.push(value.toJSON());
+    let oldValue = new Vector<JSONObject>();
+    each(change.oldValue as ISequence<T>, value => {
+      oldValue.pushBack(value.toJSON());
     });
     return {
       type: 'swap',
