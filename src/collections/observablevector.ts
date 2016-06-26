@@ -8,8 +8,12 @@
 'use strict';
 
 import {
-  toArray
+  each, toArray
 } from '../algorithm/iteration';
+
+import {
+  JSONObject
+} from '../algorithm/json';
 
 import {
   Vector
@@ -160,7 +164,7 @@ class ObservableVector<T> extends Vector<T> implements IObservableVector<T> {
   set(index: number, value: T): void {
     let oldValue = this.at(index);
     super.set(index, value);
-    this.changed.emit({
+    this.onChange({
       type: 'set',
       oldIndex: index,
       oldValue,
@@ -182,7 +186,7 @@ class ObservableVector<T> extends Vector<T> implements IObservableVector<T> {
    */
   pushBack(value: T): void {
     super.pushBack(value);
-    this.changed.emit({
+    this.onChange({
       type: 'insert',
       oldIndex: -1,
       oldValue: void 0,
@@ -206,7 +210,7 @@ class ObservableVector<T> extends Vector<T> implements IObservableVector<T> {
   popBack(): T {
     let oldIndex = this.length - 1;
     let oldValue = super.popBack();
-    this.changed.emit({
+    this.onChange({
       type: 'remove',
       oldIndex,
       oldValue,
@@ -234,7 +238,7 @@ class ObservableVector<T> extends Vector<T> implements IObservableVector<T> {
    */
   insert(index: number, value: T): void {
     super.insert(index, value);
-    this.changed.emit({
+    this.onChange({
       type: 'insert',
       oldIndex: -1,
       oldValue: void 0,
@@ -260,7 +264,7 @@ class ObservableVector<T> extends Vector<T> implements IObservableVector<T> {
   remove(index: number): void {
     let oldValue = this.at(index);
     super.remove(index);
-    this.changed.emit({
+    this.onChange({
       type: 'remove',
       oldIndex: index,
       oldValue,
@@ -281,7 +285,7 @@ class ObservableVector<T> extends Vector<T> implements IObservableVector<T> {
   clear(): void {
     let oldValue = toArray(this);
     super.clear();
-    this.changed.emit({
+    this.onChange({
       type: 'clear',
       oldIndex: 0,
       oldValue,
@@ -306,7 +310,7 @@ class ObservableVector<T> extends Vector<T> implements IObservableVector<T> {
     let oldValue = toArray(this);
     super.swap(other);
     let newValue = toArray(this);
-    this.changed.emit({
+    this.onChange({
       type: 'swap',
       oldIndex: 0,
       oldValue,
@@ -315,9 +319,332 @@ class ObservableVector<T> extends Vector<T> implements IObservableVector<T> {
     });
   }
 
+  /**
+   * Handle a change in the vector.
+   *
+   * #### Notes
+   * The default implementation is to emit the `changed` signal.
+   */
+  protected onChange(change: IVectorChangedArgs<T>): void {
+    this.changed.emit(change);
+  }
+
   private _isDisposed = false;
 }
 
 
 // Define the signals for the `ObservableVector` class.
 defineSignal(ObservableVector.prototype, 'changed');
+
+
+
+/**
+ * An object which is JSON-able.
+ */
+export
+interface IJSONable {
+  /**
+   * Convert the object to JSON.
+   */
+  toJSON(): JSONObject;
+}
+
+
+/**
+ * An observable vector that supports undo/redo actions.
+ */
+export
+class ObservableUndoableVector<T extends IJSONable> extends ObservableVector<T> {
+  /**
+   * Construct a new undoable observable vector.
+   */
+  constructor(factory: (value: JSONObject) => T) {
+    super();
+    this._factory = factory;
+  }
+
+  /**
+   * Whether the object can redo changes.
+   *
+   * #### Notes
+   * This is a read-only property.
+   */
+  get canRedo(): boolean {
+    return this._index < this._stack.length - 1;
+  }
+
+  /**
+   * Whether the object can undo changes.
+   *
+   * #### Notes
+   * This is a read-only property.
+   */
+  get canUndo(): boolean {
+    return this._index >= 0;
+  }
+
+  /**
+   * Get whether the object is disposed.
+   *
+   * #### Notes
+   * This is a read-only property.
+   */
+  get isDisposed(): boolean {
+    return this._stack === null;
+  }
+
+  /**
+   * Dispose of the resources held by the model.
+   */
+  dispose(): void {
+    // Do nothing if already disposed.
+    if (this.isDisposed) {
+      return;
+    }
+    this._factory = null;
+    this._stack = null;
+    super.dispose();
+  }
+
+  /**
+   * Begin a compound operation.
+   */
+  beginCompoundOperation(isUndoAble?: boolean): void {
+    this._inCompound = true;
+    this._isUndoable = (isUndoAble !== false);
+    this._madeCompoundChange = false;
+  }
+
+  /**
+   * End a compound operation.
+   */
+  endCompoundOperation(): void {
+    this._inCompound = false;
+    this._isUndoable = true;
+    if (this._madeCompoundChange) {
+      this._index++;
+    }
+  }
+
+  /**
+   * Undo an operation.
+   */
+  undo(): void {
+    if (!this.canUndo) {
+      return;
+    }
+    let changes = this._stack[this._index];
+    this._isUndoable = false;
+    for (let change of changes.reverse()) {
+      this._undoChange(change);
+    }
+    this._isUndoable = true;
+    this._index--;
+  }
+
+  /**
+   * Redo an operation.
+   */
+  redo(): void {
+    if (!this.canRedo) {
+      return;
+    }
+    this._index++;
+    let changes = this._stack[this._index];
+    this._isUndoable = false;
+    for (let change of changes) {
+      this._redoChange(change);
+    }
+    this._isUndoable = true;
+  }
+
+  /**
+   * Clear the change stack.
+   */
+  clearUndo(): void {
+    this._index = -1;
+    this._stack = [];
+  }
+
+  /**
+   * Handle a change in the list.
+   */
+  protected onChange(change: IVectorChangedArgs<T>): void {
+    if (!this._isUndoable) {
+      this.changed.emit(change);
+      return;
+    }
+    // Clear everything after this position if necessary.
+    if (!this._inCompound || !this._madeCompoundChange) {
+      this._stack = this._stack.slice(0, this._index + 1);
+    }
+    // Copy the change.
+    let evt = this._copyChange(change);
+    // Put the change in the stack.
+    if (this._stack[this._index + 1]) {
+      this._stack[this._index + 1].push(evt);
+    } else {
+      this._stack.push([evt]);
+    }
+    // If not in a compound operation, increase index.
+    if (!this._inCompound) {
+      this._index++;
+    } else {
+      this._madeCompoundChange = true;
+    }
+    this.changed.emit(change);
+  }
+
+  /**
+   * Undo a change event.
+   */
+  private _undoChange(change: IVectorChangedArgs<JSONObject>): void {
+    let value: T;
+    switch (change.type) {
+    case 'add':
+      this.remove(change.oldIndex);
+      break;
+    case 'set':
+      value = this._createValue(change.oldValue as JSONObject);
+      this.set(change.oldIndex, value);
+      break;
+    case 'insert':
+      value = this._createValue(change.oldValue as JSONObject);
+      this.insert(change.oldIndex, value);
+      break;
+    case 'clear':
+    case 'swap':
+      let values = this._createValues(change.oldValue as JSONObject[]);
+      this.swap(values);
+      break;
+    default:
+      return;
+    }
+  }
+
+  /**
+   * Redo a change event.
+   */
+  private _redoChange(change: IVectorChangedArgs<JSONObject>): void {
+    let value: T;
+    switch (change.type) {
+    case 'add':
+      value = this._createValue(change.newValue as JSONObject);
+      this.insert(change.newIndex, value);
+      break;
+    case 'set':
+      value = this._createValue(change.newValue as JSONObject);
+      this.set(change.newIndex, value);
+      break;
+    case 'remove':
+      this.remove(change.oldIndex);
+      break;
+    case 'clear':
+      this.clear();
+      break;
+    case 'swap':
+      let values = this._createValues(change.newValue as JSONObject[]);
+      this.swap(values);
+      break;
+    default:
+      return;
+    }
+  }
+
+  /**
+   * Create a value from JSON.
+   */
+  private _createValue(data: JSONObject): T {
+    let factory = this._factory;
+    return factory(data);
+  }
+
+  /**
+   * Create a list of cell models from JSON.
+   */
+  private _createValues(bundles: JSONObject[]): Vector<T> {
+    let values = new Vector<T>();
+    each(bundles, bundle => {
+      values.pushBack(this._createValue(bundle));
+    });
+    return values;
+  }
+
+  /**
+   * Copy a change as JSON.
+   */
+  private _copyChange(change: IVectorChangedArgs<T>): IVectorChangedArgs<JSONObject> {
+    let oldValue: JSONObject = null;
+    let newValue: JSONObject = null;
+    switch (change.type) {
+    case 'add':
+    case 'set':
+    case 'remove':
+      if (change.oldValue) {
+        oldValue = (change.oldValue as T).toJSON();
+      }
+      if (change.newValue) {
+        newValue = (change.newValue as T).toJSON();
+      }
+      break;
+    case 'swap':
+      return this._copySwap(change);
+    case 'clear':
+      return this._copyClear(change);
+    default:
+      return;
+    }
+    return {
+      type: change.type,
+      oldIndex: change.oldIndex,
+      newIndex: change.newIndex,
+      oldValue,
+      newValue
+    };
+  }
+
+  /**
+   * Copy a swap change as JSON.
+   */
+  private _copySwap(change: IVectorChangedArgs<T>): IVectorChangedArgs<JSONObject> {
+    let oldValue: JSONObject[] = [];
+    each(change.oldValue as T[], value => {
+      oldValue.push(value.toJSON());
+    });
+    let newValue: JSONObject[] = [];
+    each(change.newValue as T[], value => {
+      newValue.push(value.toJSON());
+    });
+    return {
+      type: 'swap',
+      oldIndex: change.oldIndex,
+      newIndex: change.newIndex,
+      oldValue,
+      newValue
+    };
+  }
+
+  /**
+   * Copy a clear change as JSON.
+   */
+  private _copyClear(change: IVectorChangedArgs<T>): IVectorChangedArgs<JSONObject> {
+    let oldValue: JSONObject[] = [];
+    each(change.oldValue as T[], value => {
+      oldValue.push(value.toJSON());
+    });
+    return {
+      type: 'swap',
+      oldIndex: change.oldIndex,
+      newIndex: change.newIndex,
+      oldValue,
+      newValue: void 0
+    };
+  }
+
+  private _inCompound = false;
+  private _isUndoable = true;
+  private _madeCompoundChange = false;
+  private _index = -1;
+  private _stack: IVectorChangedArgs<JSONObject>[][] = [];
+  private _factory: (value: JSONObject) => T = null;
+}
