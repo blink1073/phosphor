@@ -1,0 +1,10 @@
+{
+  "module": "commonjs",
+  "excludeNotExported": true,
+  "target": "es5",
+  "moduleResolution": "node",
+  "out": "docs/",
+  "excludeExternals": "true"
+}
+
+
