@@ -1,18 +1,7 @@
 {
-  "declaration": true,
-  "noImplicitAny": true,
-  "noEmitOnError": true,
-  "noUnusedLocals": true,
-  "strictNullChecks": true,
-  "module": "commonjs",
-  "moduleResolution": "node",
-  "target": "ES5",
-  "outDir": "./lib",
-  "lib": ["ES5", "ES2015.Collection", "ES2015.Promise", "DOM"],
-  "types": [],
+  "mode": "file",
   "excludeNotExported": true,
-  "out": "docs/",
-  "excludeExternals": "true"
+  "out": "docs/"
 }
 
 

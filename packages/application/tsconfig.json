@@ -11,5 +11,6 @@
     "outDir": "./lib",
     "lib": ["ES5", "ES2015.Collection", "ES2015.Promise", "DOM"],
     "types": []
-  }
+  },
+  "jsdoc": "jsdoc/out"
 }
