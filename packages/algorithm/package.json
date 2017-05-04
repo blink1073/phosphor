@@ -18,7 +18,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "clean": "rimraf lib"
+    "clean": "rimraf lib",
+    "docs": "typedoc --mode file --module commonjs --target es5 --moduleResolution node --out docs/ ."
   },
   "repository": {
     "type": "git",
