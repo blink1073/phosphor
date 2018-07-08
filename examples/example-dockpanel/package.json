@@ -12,6 +12,7 @@
   "devDependencies": {
     "css-loader": "^0.26.1",
     "file-loader": "^0.11.1",
+    "http-server": "^0.11.1",
     "rimraf": "^2.5.2",
     "style-loader": "^0.13.1",
     "typescript": "~2.3.0",
@@ -19,6 +20,7 @@
   },
   "scripts": {
     "build": "tsc && webpack",
-    "clean": "rimraf build"
+    "clean": "rimraf build",
+    "start": "http-server"
   }
 }
